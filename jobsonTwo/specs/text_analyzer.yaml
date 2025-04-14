@@ -1,0 +1,47 @@
+name: Text Analyzer
+description: Analyze text files to extract statistics, readability metrics, and linguistic information
+version: 1.0.0
+
+expectedInputs:
+  - id: input_file
+    name: Input Text File
+    description: The text file to analyze
+    type: file
+    required: true
+    supportedFormats: [txt, md, json, csv, yaml, html]
+
+  - id: include_common_words
+    name: Include Common Words Analysis
+    description: Whether to include analysis of most common words
+    type: boolean
+    required: false
+    default: true
+
+  - id: exclude_stop_words
+    name: Exclude Stop Words
+    description: Whether to exclude common stop words from word frequency analysis
+    type: boolean
+    required: false
+    default: true
+
+  - id: num_common_words
+    name: Number of Common Words
+    description: Number of most common words to include in the analysis
+    type: number
+    required: false
+    default: 10
+    min: 1
+    max: 100
+
+outputs:
+  - id: analysis_report
+    name: Analysis Report
+    description: Detailed text analysis report in plain text format
+    type: file
+    path: analysis_report.txt
+
+execution:
+  application: python3
+  arguments:
+    - -c
+    - "import os\nimport sys\nimport json\nimport re\nfrom collections import Counter\nfrom math import sqrt\nimport traceback\n\ntry:\n    # Function to read input file\n    def read_input(input_id):\n        input_file = os.path.join(os.getcwd(), f'input_{input_id}.txt')\n        if os.path.exists(input_file):\n            if input_id == 'input_file':\n                return input_file\n            else:\n                with open(input_file, 'r') as f:\n                    return f.read().strip()\n        return None\n\n    # Get input parameters\n    input_file_path = read_input('input_file')\n    if not input_file_path or not os.path.exists(input_file_path):\n        raise ValueError(\"Input file not found\")\n\n    include_common_words = read_input('include_common_words') == 'true'\n    exclude_stop_words = read_input('exclude_stop_words') == 'true'\n    num_common_words = int(read_input('num_common_words') or 10)\n\n    # Read the text file\n    with open(input_file_path, 'r', encoding='utf-8') as f:\n        text = f.read()\n\n    # Basic text statistics\n    chars_with_spaces = len(text)\n    chars_without_spaces = len(text.replace(' ', ''))\n    words = re.findall(r'\\b\\w+\\b', text.lower())\n    word_count = len(words)\n    sentences = re.split(r'[.!?]+', text)\n    sentence_count = len([s for s in sentences if s.strip()])\n    paragraphs = text.split('\\n\\n')\n    paragraph_count = len([p for p in paragraphs if p.strip()])\n    \n    # Average word length\n    avg_word_length = sum(len(word) for word in words) / word_count if word_count > 0 else 0\n\n    # Reading time (based on average 250 words per minute)\n    reading_time_minutes = word_count / 250\n    reading_time_seconds = int(reading_time_minutes * 60)\n\n    # Language detection\n    try:\n        from langdetect import detect\n        language = detect(text)\n    except ImportError:\n        language = \"Error: langdetect library not available\"\n    except Exception as e:\n        language = f\"Error detecting language: {str(e)}\"\n\n    # Most common words analysis\n    common_words = {}\n    if include_common_words:\n        if exclude_stop_words:\n            try:\n                import nltk\n                nltk.download('stopwords', quiet=True)\n                from nltk.corpus import stopwords\n                stop_words = set(stopwords.words('english'))\n                filtered_words = [word for word in words if word not in stop_words]\n            except ImportError:\n                filtered_words = words\n                print(\"NLTK not available, proceeding without stop words\", file=sys.stderr)\n        else:\n            filtered_words = words\n\n        word_freq = Counter(filtered_words)\n        common_words = dict(word_freq.most_common(num_common_words))\n\n    # Readability analysis (Flesch Reading Ease)\n    try:\n        total_syllables = 0\n        for word in words:\n            count = len(re.findall(r'[aeiouy]+', word.lower()))\n            total_syllables += count if count > 0 else 1\n\n        if sentence_count > 0 and word_count > 0:\n            flesch_score = 206.835 - 1.015 * (word_count / sentence_count) - 84.6 * (total_syllables / word_count)\n        else:\n            flesch_score = 0\n    except Exception as e:\n        flesch_score = f\"Error calculating readability: {str(e)}\"\n\n    # Sentiment analysis\n    try:\n        from textblob import TextBlob\n        blob = TextBlob(text)\n        sentiment = {\n            'polarity': blob.sentiment.polarity,\n            'subjectivity': blob.sentiment.subjectivity,\n            'classification': 'positive' if blob.sentiment.polarity > 0 else 'negative' if blob.sentiment.polarity < 0 else 'neutral'\n        }\n    except ImportError:\n        sentiment = \"Error: textblob library not available\"\n    except Exception as e:\n        sentiment = f\"Error analyzing sentiment: {str(e)}\"\n\n    # Create text-formatted report\n    text_report = f\"\"\"\nText Analysis Report\n===================\n\nBasic Statistics\n---------------\nWord Count: {word_count}\nCharacter Count (with spaces): {chars_with_spaces}\nCharacter Count (without spaces): {chars_without_spaces}\nSentence Count: {sentence_count}\nParagraph Count: {paragraph_count}\nAverage Word Length: {round(avg_word_length, 2)} characters\nEstimated Reading Time: {reading_time_seconds // 60}m {reading_time_seconds % 60}s\n\nLanguage\n--------\nDetected Language: {language.upper()}\n\nReadability\n----------\nFlesch Reading Ease Score: {round(flesch_score, 2) if isinstance(flesch_score, float) else flesch_score}\nInterpretation: {'Very Easy' if isinstance(flesch_score, float) and flesch_score > 90 else\n                'Easy' if isinstance(flesch_score, float) and flesch_score > 80 else\n                'Fairly Easy' if isinstance(flesch_score, float) and flesch_score > 70 else\n                'Standard' if isinstance(flesch_score, float) and flesch_score > 60 else\n                'Fairly Difficult' if isinstance(flesch_score, float) and flesch_score > 50 else\n                'Difficult' if isinstance(flesch_score, float) and flesch_score > 30 else\n                'Very Difficult'}\n\nSentiment Analysis\n----------------\nPolarity: {sentiment.get('polarity', 'N/A')}\nSubjectivity: {sentiment.get('subjectivity', 'N/A')}\nClassification: {sentiment.get('classification', 'N/A')}\n\"\"\"\n\n    if include_common_words:\n        text_report += \"\"\"\nWord Frequency Analysis\n---------------------\n\"\"\"\n        for word, count in common_words.items():\n            text_report += f\"{word}: {count}\\n\"\n\n    # Save the text report\n    output_path = os.path.join(os.getcwd(), 'analysis_report.txt')\n    with open(output_path, 'w', encoding='utf-8') as f:\n        f.write(text_report)\n\n    print(\"Analysis completed successfully\", file=sys.stderr)\n\nexcept Exception as e:\n    print(f\"Error: {str(e)}\", file=sys.stderr)\n    print(traceback.format_exc(), file=sys.stderr)\n    sys.exit(1)" 

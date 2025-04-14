@@ -1,0 +1,146 @@
+name: Image Processor
+description: Process images with various operations like resize, rotate, and format conversion
+version: 1.0.0
+
+expectedInputs:
+  - id: input_image
+    name: Input Image
+    description: The image file to process
+    type: file
+    required: true
+    supportedFormats: [jpg, jpeg, png, gif, bmp]
+
+  - id: operation
+    name: Operation
+    description: The operation to perform on the image
+    type: string
+    required: true
+    options:
+      - resize
+      - rotate
+      - convert
+      - grayscale
+      - thumbnail
+
+  - id: width
+    name: Width
+    description: New width in pixels (for resize operation)
+    type: number
+    required: false
+    min: 1
+    max: 10000
+
+  - id: height
+    name: Height
+    description: New height in pixels (for resize operation)
+    type: number
+    required: false
+    min: 1
+    max: 10000
+
+  - id: angle
+    name: Rotation Angle
+    description: Angle to rotate the image (for rotate operation)
+    type: number
+    required: false
+    min: 0
+    max: 360
+
+  - id: format
+    name: Output Format
+    description: Format to convert the image to (for convert operation)
+    type: string
+    required: false
+    options:
+      - jpg
+      - png
+      - gif
+      - bmp
+
+outputs:
+  - id: processed_image
+    name: Processed Image
+    description: The processed image file
+    type: file
+    path: output.png
+    supportedFormats: [jpg, jpeg, png, gif, bmp]
+    binary: true
+    displayable: false
+
+execution:
+  application: python3
+  arguments:
+    - -c
+    - |
+      from PIL import Image
+      import os
+      import sys
+      import json
+
+      try:
+          # Get input values from files
+          def read_input(input_id):
+              input_file = os.path.join(os.getcwd(), f'input_{input_id}.txt')
+              if os.path.exists(input_file):
+                  if input_id == 'input_image':
+                      # For image file, just return the path
+                      return input_file
+                  else:
+                      # For other inputs, read as text
+                      with open(input_file, 'r') as f:
+                          return f.read().strip()
+              return None
+
+          # Get input values
+          input_image = read_input('input_image')  # This is now the path to the copied image file
+          operation = read_input('operation')
+          width = read_input('width')
+          height = read_input('height')
+          angle = read_input('angle')
+          format = read_input('format')
+
+          print(f"Processing image: {input_image}", file=sys.stderr)
+          print(f"Operation: {operation}", file=sys.stderr)
+
+          # Load input image
+          img = Image.open(input_image)
+          print("Image loaded successfully", file=sys.stderr)
+
+          # Perform operation
+          if operation == "resize":
+              width = int(width) if width else img.width
+              height = int(height) if height else img.height
+              img = img.resize((width, height), Image.Resampling.LANCZOS)
+              print(f"Resized to {width}x{height}", file=sys.stderr)
+
+          elif operation == "rotate":
+              angle = float(angle) if angle else 0
+              img = img.rotate(angle, expand=True)
+              print(f"Rotated by {angle} degrees", file=sys.stderr)
+
+          elif operation == "convert":
+              format = format if format else 'png'
+              if format.lower() == 'jpg':
+                  format = 'JPEG'
+              img = img.convert("RGB" if format == "JPEG" else "RGBA")
+              print(f"Converted to {format}", file=sys.stderr)
+
+          elif operation == "grayscale":
+              img = img.convert("L")
+              print("Converted to grayscale", file=sys.stderr)
+
+          elif operation == "thumbnail":
+              size = (128, 128)
+              img.thumbnail(size, Image.Resampling.LANCZOS)
+              print("Created thumbnail", file=sys.stderr)
+
+          # Save output
+          output_path = os.path.join(os.getcwd(), 'output.png')
+          img.save(output_path)
+          print(f"Saved output to {output_path}", file=sys.stderr)
+
+      except Exception as e:
+          print(f"Error: {str(e)}", file=sys.stderr)
+          import traceback
+          print(traceback.format_exc(), file=sys.stderr)
+          sys.exit(1) 

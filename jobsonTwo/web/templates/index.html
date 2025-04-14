@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}JobsonTwo - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title">Welcome to JobsonTwo</h1>
+                <p class="card-text">Transform your command-line applications into web services with ease.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Jobs</h5>
+            </div>
+            <div class="card-body">
+                {% if jobs %}
+                    <div class="list-group">
+                        {% for job in jobs %}
+                            <a href="{{ url_for('job_details', job_id=job.id) }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ job.name }}</h6>
+                                    <small>{{ job.created_at }}</small>
+                                </div>
+                                <p class="mb-1">{{ job.description }}</p>
+                                <small>Status: <span class="badge bg-{{ job.status_color }} text-dark">{{ job.status }}</span></small>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No jobs found. Create your first job to get started!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <h3>{{ stats.total_jobs }}</h3>
+                        <small class="text-muted">Total Jobs</small>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h3>{{ stats.running_jobs }}</h3>
+                        <small class="text-muted">Running</small>
+                    </div>
+                    <div class="col-6">
+                        <h3>{{ stats.completed_jobs }}</h3>
+                        <small class="text-muted">Completed</small>
+                    </div>
+                    <div class="col-6">
+                        <h3>{{ stats.failed_jobs }}</h3>
+                        <small class="text-muted">Failed</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Available Job Types</h5>
+            </div>
+            <div class="card-body">
+                {% if job_types %}
+                    <div class="list-group">
+                        {% for job_type in job_types %}
+                            <a href="{{ url_for('new_job', type=job_type.id) }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ job_type.name }}</h6>
+                                    <small class="text-muted">{{ job_type.id }}</small>
+                                </div>
+                                <p class="mb-1">{{ job_type.description }}</p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No job types available. Add job specifications to get started!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

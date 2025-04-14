@@ -1,0 +1,112 @@
+name: Calculator Job
+description: A job that performs basic arithmetic operations
+expectedInputs:
+  - id: operation
+    name: Operation
+    type: string
+    description: The operation to perform (add, subtract, multiply, divide)
+  - id: num1
+    name: First Number
+    type: number
+    description: First number (or file containing both numbers)
+    optional: true
+  - id: num2
+    name: Second Number
+    type: number
+    description: Second number (or file containing both numbers)
+    optional: true
+  - id: numbers_file
+    name: Numbers File
+    type: file
+    description: Optional file containing both numbers (space or newline separated)
+    optional: true
+  - id: round_result
+    name: Round Result
+    type: boolean
+    description: Whether to round the result to the nearest integer
+    default: false
+execution:
+  application: python3
+  arguments:
+    - -c
+    - |
+      import sys
+      import math
+      import os
+      
+      print("Debug: Starting calculator job", file=sys.stderr)
+      print(f"Debug: Current directory: {os.getcwd()}", file=sys.stderr)
+      print(f"Debug: Directory contents: {os.listdir('.')}", file=sys.stderr)
+      
+      # Get operation
+      operation = '${inputs.operation}'
+      print(f"Debug: Operation: {operation}", file=sys.stderr)
+      
+      # Get numbers
+      try:
+          if '${inputs.numbers_file}' != "":
+              print("Debug: Reading numbers from file", file=sys.stderr)
+              with open('${inputs.numbers_file}', 'r') as f:
+                  numbers = f.read().strip().split()
+                  if len(numbers) != 2:
+                      print("Error: File must contain exactly two numbers", file=sys.stderr)
+                      sys.exit(1)
+                  num1 = float(numbers[0])
+                  num2 = float(numbers[1])
+          else:
+              print("Debug: Using numbers from direct input", file=sys.stderr)
+              num1 = float('${inputs.num1}')
+              num2 = float('${inputs.num2}')
+          print(f"Debug: First number: {num1}", file=sys.stderr)
+          print(f"Debug: Second number: {num2}", file=sys.stderr)
+      except Exception as e:
+          print(f"Error reading numbers: {e}", file=sys.stderr)
+          sys.exit(1)
+      
+      # Get round setting
+      round_result = '${inputs.round_result}'.lower() == 'true'
+      print(f"Debug: Round result: {round_result}", file=sys.stderr)
+      
+      # Perform calculation
+      operations = {
+          "add": lambda x, y: x + y,
+          "subtract": lambda x, y: x - y,
+          "multiply": lambda x, y: x * y,
+          "divide": lambda x, y: x / y if y != 0 else None
+      }
+      
+      if operation not in operations:
+          print(f"Error: Invalid operation '{operation}'", file=sys.stderr)
+          sys.exit(1)
+      
+      if operation == "divide" and num2 == 0:
+          print("Error: Division by zero", file=sys.stderr)
+          sys.exit(1)
+      
+      result = operations[operation](num1, num2)
+      
+      # Round if requested
+      if round_result:
+          result = round(result)
+      
+      print(f"Debug: Calculation result: {result}", file=sys.stderr)
+      
+      # Write result to output file
+      output_file = "output.txt"
+      print(f"Debug: Writing result to file: {output_file}", file=sys.stderr)
+      with open(output_file, 'w') as f:
+          f.write(str(result))
+      
+      if os.path.exists(output_file):
+          print(f"Debug: Output file exists at {os.path.abspath(output_file)}", file=sys.stderr)
+          with open(output_file, 'r') as f:
+              print(f"Debug: Output file contents: {f.read()}", file=sys.stderr)
+      else:
+          print("Debug: Output file was not created", file=sys.stderr)
+      
+      print("Debug: Job completed successfully", file=sys.stderr)
+outputs:
+  - id: result
+    path: output.txt
+    description: The calculation result 
+    description: The calculation result 

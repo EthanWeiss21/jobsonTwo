@@ -1,0 +1,74 @@
+name: Echo Job
+description: A simple job that echoes a message
+expectedInputs:
+  - id: message
+    name: Message
+    type: string
+    description: The message to echo
+    optional: true
+  - id: input_file
+    name: Input File
+    type: file
+    description: Optional file containing the message to echo
+    optional: true
+execution:
+  application: python3
+  arguments:
+    - -c
+    - |
+      import sys
+      import os
+      
+      print("Debug: Starting echo job", file=sys.stderr)
+      print(f"Debug: Current directory: {os.getcwd()}", file=sys.stderr)
+      print(f"Debug: Directory contents: {os.listdir('.')}", file=sys.stderr)
+      
+      # Try to read message from file first
+      try:
+          with open("input_message.txt", 'r') as f:
+              message = f.read().strip()
+              print(f"Debug: Read message from file: {message}", file=sys.stderr)
+      except:
+          message = None
+          print("Debug: No message file found", file=sys.stderr)
+      
+      # Try to read from input file if provided
+      try:
+          with open("input_input_file.txt", 'r') as f:
+              file_content = f.read().strip()
+              print(f"Debug: Read content from input file: {file_content}", file=sys.stderr)
+      except:
+          file_content = None
+          print("Debug: No input file found", file=sys.stderr)
+      
+      # Use message if available, otherwise use file content
+      output_content = None
+      if message:
+          print("Debug: Using message from direct input", file=sys.stderr)
+          output_content = message
+      elif file_content:
+          print("Debug: Using content from input file", file=sys.stderr)
+          output_content = file_content
+      else:
+          print("Debug: No input available", file=sys.stderr)
+          print("Error: No message provided and no valid input file", file=sys.stderr)
+          sys.exit(1)
+      
+      # Write output to file
+      output_file = "output.txt"
+      print(f"Debug: Writing output to file: {output_file}", file=sys.stderr)
+      with open(output_file, 'w') as f:
+          f.write(output_content)
+      
+      # Verify file was created
+      if os.path.exists(output_file):
+          print(f"Debug: Output file exists at {os.path.abspath(output_file)}", file=sys.stderr)
+          print(f"Debug: Output file contents: {output_content}", file=sys.stderr)
+      else:
+          print("Debug: Output file was not created!", file=sys.stderr)
+      
+      print("Debug: Job completed successfully", file=sys.stderr)
+outputs:
+  - id: result
+    path: output.txt
+    description: The echoed message 
